@@ -1,0 +1,19 @@
+# English overrides on top of whisper/lib/default_config.yaml.
+language_name: english
+language_code: en
+dataset_id: google/fleurs
+dataset_config: en_us
+text_column: transcription
+audio_column: audio
+
+# CPU-smoke-test overrides. On a GPU box, either delete this `train:` block (to
+# fall back to default_config.yaml's GPU-scale values) or point --config at
+# whisper/lib/default_config.yaml directly.
+train:
+  max_steps: 30
+  warmup_steps: 5
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  eval_steps: 15
+  save_steps: 15
+  logging_steps: 5

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+
+whisper/*/data/
+whisper/*/models/
+whisper/*/results/
