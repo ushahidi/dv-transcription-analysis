@@ -1,0 +1,17 @@
+# Kiswahili overrides on top of whisper/lib/default_config.yaml.
+language_name: swahili   # must match Whisper's tokenizer language name, not the ISO code
+language_code: sw
+dataset_id: google/fleurs
+dataset_config: sw_ke
+text_column: transcription
+audio_column: audio
+
+# CPU-smoke-test overrides - see whisper/english/config.yaml for the same note.
+train:
+  max_steps: 30
+  warmup_steps: 5
+  per_device_train_batch_size: 2
+  per_device_eval_batch_size: 2
+  eval_steps: 15
+  save_steps: 15
+  logging_steps: 5

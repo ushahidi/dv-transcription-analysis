@@ -1,0 +1,37 @@
+# Shared defaults for every language. A language's own config.yaml (e.g.
+# whisper/english/config.yaml) is merged on top of this and wins on conflicts.
+#
+# The values below are GPU-scale, taken from the Hugging Face reference recipe
+# ("Fine-Tune Whisper for Multilingual ASR", huggingface.co/blog/fine-tune-whisper).
+# They are what a real fine-tuning run (e.g. on Colab) should use. Local CPU runs
+# override train.* via each language's config.yaml to small smoke-test values.
+
+model:
+  name: openai/whisper-tiny
+  device: auto          # "auto" resolves to cuda if torch.cuda.is_available(), else cpu
+  fp16: true            # ignored/forced-off automatically whenever the resolved device is cpu
+
+data:
+  sample_rate: 16000
+  max_samples:
+    train: 80
+    validation: 20
+    test: 20
+
+train:
+  output_dir_suffix: finetuned
+  learning_rate: 1.0e-5
+  warmup_steps: 500
+  max_steps: 5000
+  per_device_train_batch_size: 16
+  per_device_eval_batch_size: 8
+  gradient_accumulation_steps: 1
+  eval_strategy: steps
+  eval_steps: 500
+  save_strategy: steps
+  save_steps: 500
+  save_total_limit: 2
+  generation_max_length: 225
+  logging_steps: 25
+  predict_with_generate: true
+  use_peft: false

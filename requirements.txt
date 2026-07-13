@@ -1,0 +1,15 @@
+# torch is installed separately (see whisper/README.md) since the correct wheel
+# depends on the machine - CPU-only index URL here, CUDA build on a GPU box later.
+#
+# Versions below are pinned to what was verified working end-to-end in this repo.
+transformers==5.13.0
+datasets==5.0.0
+evaluate==0.4.6
+jiwer==4.0.0
+soundfile==0.14.0
+librosa==0.11.0
+accelerate==1.14.0
+peft==0.19.1
+ctranslate2==4.8.1
+pyyaml==6.0.3
+pandas==3.0.3
