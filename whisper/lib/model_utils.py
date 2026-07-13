@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 from .config import PipelineConfig
@@ -46,7 +47,16 @@ def load_model(cfg: PipelineConfig, model_name: Optional[str] = None) -> Whisper
     relying on defaults, so every script in this project behaves consistently.
     """
     name = model_name or cfg.model_name
-    model = WhisperForConditionalGeneration.from_pretrained(name)
+
+    # Some checkpoints (e.g. openai/whisper-large-v3) have their weights stored
+    # on the Hub in fp16. Loading without an explicit torch_dtype keeps them in
+    # that stored precision, which then mismatches the fp32 audio features
+    # whenever we're not actually running fp16 (e.g. this project's CPU runs),
+    # crashing with "Input type (float) and bias type (Half) should be the
+    # same" on the very first conv layer. Pin the dtype explicitly instead of
+    # trusting whatever precision the checkpoint happens to be stored in.
+    torch_dtype = torch.float16 if cfg.fp16 else torch.float32
+    model = WhisperForConditionalGeneration.from_pretrained(name, torch_dtype=torch_dtype)
 
     # Tell the model which language to expect and that we want a literal
     # transcript (not a translation into English). `forced_decoder_ids` is an
