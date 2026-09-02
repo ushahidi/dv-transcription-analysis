@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 
-whisper/*/data/
-whisper/*/models/
-whisper/*/results/
+*/*/data/
+*/*/models/
+*/*/results/
+
+# Shared eval/test audio + manifests (downloaded by data/scripts/prepare_dataset.py) -
+# generated content, not source; data/<language>/config.yaml is still tracked.
+data/*/wav/
+data/*/manifest_*.csv
+data/*/dataset_card.json

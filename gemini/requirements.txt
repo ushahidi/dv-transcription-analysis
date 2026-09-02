@@ -1,0 +1,12 @@
+# Deliberately does NOT include torch/transformers/accelerate/peft/ctranslate2 -
+# this folder never loads a local model, so it stays a light, fast install.
+# Also does NOT include datasets/soundfile/librosa - downloading and decoding
+# audio is now centralized in data/scripts/prepare_dataset.py (this folder
+# just sends the already-downloaded .wav bytes straight to Gemini). Versions
+# pinned to what's used elsewhere in this repo where the same package is
+# already pinned there; google-genai pinned to what was verified working
+# end-to-end.
+google-genai==2.21.0
+jiwer==4.0.0
+pyyaml==6.0.3
+pandas==3.0.3

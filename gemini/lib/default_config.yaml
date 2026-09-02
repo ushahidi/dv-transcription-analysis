@@ -1,0 +1,21 @@
+# Shared defaults for every language. A language's own config.yaml (e.g.
+# gemini/kiswahili/config.yaml) is merged on top of this and wins on conflicts.
+# Mirrors whisper/lib/default_config.yaml's shape, minus everything that only
+# makes sense for a locally-run/fine-tuned model (model.device/fp16, train:) -
+# there's nothing to fine-tune here, Gemini is called over the network.
+
+gemini:
+  # "gemini-flash-latest" is a Google-maintained alias that always resolves to
+  # the current default Flash model, so this doesn't need bumping every time
+  # Google ships a new Flash version. Pin an exact model id instead (e.g.
+  # "gemini-2.5-flash") if you need a specific version held fixed for a
+  # reproducible comparison run - check the current alias/model list at
+  # https://ai.google.dev/gemini-api/docs/models before a real benchmark run.
+  model: gemini-flash-latest
+
+data:
+  sample_rate: 16000
+  max_samples:
+    train: 80
+    validation: 20
+    test: 20

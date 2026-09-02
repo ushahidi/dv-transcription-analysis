@@ -1,0 +1,8 @@
+# Shared across every engine folder - see data/scripts/prepare_dataset.py.
+language_name: swahili
+language_code: sw
+dataset_id: google/fleurs
+dataset_config: sw_ke
+text_column: transcription
+audio_column: audio
+sample_rate: 16000

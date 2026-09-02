@@ -1,0 +1,136 @@
+"""CLI: run Google Cloud Speech-to-Text (Chirp) over a language's local test
+set and report WER plus native per-sample confidence, in the same shape as
+whisper/scripts/run_baseline.py and gemini/scripts/run_baseline.py.
+
+NOT RUNNABLE YET - needs a GCP project with billing enabled, the
+Speech-to-Text API turned on, and a credential (GOOGLE_APPLICATION_CREDENTIALS
+or `gcloud auth application-default login`), plus GOOGLE_CLOUD_PROJECT set.
+None of that exists yet (see chirp/README.md); this script is complete and
+ready to run the moment it does.
+
+Usage (once GCP setup is done):
+    $env:GOOGLE_CLOUD_PROJECT = "your-project-id"
+    $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\\path\\to\\service-account.json"
+    python chirp/scripts/run_baseline.py --language kiswahili --split test
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import pandas as pd
+
+from lib.config import load_config
+from lib.dataset_utils import load_manifest
+from lib.metrics import compute_wer
+from lib.stt_client import make_client, project_id, transcribe
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--language",
+        required=True,
+        choices=["english", "kiswahili"],
+        help="Which language's test set to evaluate against.",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Cloud STT model id (e.g. chirp_3, chirp_2). Defaults to stt.model in "
+        "config.yaml.",
+    )
+    parser.add_argument(
+        "--split",
+        default="eval",
+        choices=["train", "validation", "test", "eval"],
+        help="Which downloaded split to evaluate against. 'eval' (the default) is the "
+        "shared, larger FLEURS test+validation set in ../data/ - see data/README.md.",
+    )
+    parser.add_argument("--config", default=None, help="Override path to a config.yaml.")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only evaluate the first N rows of the split (e.g. --limit 100 out of a "
+        "698-clip 'eval' split) - for a quicker/cheaper run without downloading a "
+        "separate smaller split.",
+    )
+    args = parser.parse_args()
+
+    cfg = load_config(args.language, args.config)
+    model_name = args.model or cfg.stt_model
+    project = project_id()
+
+    manifest = load_manifest(cfg, args.split)
+    if args.limit:
+        manifest = manifest.head(args.limit)
+    client = make_client(cfg.gcp_location)
+
+    per_sample = []
+    for i, row in manifest.iterrows():
+        audio_path = cfg.wav_dir / row["file_name"]
+        print(f"[{i + 1}/{len(manifest)}] {row['file_name']}...", end=" ", flush=True)
+
+        result = transcribe(
+            client,
+            audio_path,
+            project,
+            cfg.gcp_location,
+            model_name,
+            cfg.stt_language_codes,
+        )
+        hypothesis = result["hypothesis"]
+        confidence = result["confidence"]
+
+        wer = compute_wer([row["transcript"]], [hypothesis])
+        print(f"wer={wer:.3f}")
+
+        per_sample.append(
+            {
+                "file_name": row["file_name"],
+                "reference": row["transcript"],
+                "hypothesis": hypothesis,
+                "wer": wer,
+                "confidence": confidence,
+            }
+        )
+
+    references = [r["reference"] for r in per_sample]
+    hypotheses = [r["hypothesis"] for r in per_sample]
+    overall_wer = compute_wer(references, hypotheses)
+    mean_confidence = sum(r["confidence"] for r in per_sample) / len(per_sample) if per_sample else 0.0
+
+    result = {
+        "language": cfg.language_name,
+        "model": model_name,
+        "split": args.split,
+        "num_samples": len(per_sample),
+        "overall_wer": overall_wer,
+        "mean_confidence": mean_confidence,
+        "date": datetime.now(timezone.utc).isoformat(),
+        "samples": per_sample,
+    }
+
+    cfg.results_dir.mkdir(parents=True, exist_ok=True)
+    safe_model = model_name.split("/")[-1]
+    json_path = cfg.results_dir / f"baseline_{safe_model}_{args.split}.json"
+    csv_path = cfg.results_dir / f"baseline_{safe_model}_{args.split}.csv"
+    json_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    pd.DataFrame(per_sample).to_csv(csv_path, index=False)
+
+    print(
+        f"{cfg.language_name} / {model_name} / {args.split}: "
+        f"WER={overall_wer:.3f}  mean_confidence={mean_confidence:.3f}  n={len(per_sample)}"
+    )
+    print(f"Results: {json_path}")
+
+
+if __name__ == "__main__":
+    main()

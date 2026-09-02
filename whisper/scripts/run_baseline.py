@@ -78,11 +78,20 @@ def main() -> None:
     )
     parser.add_argument(
         "--split",
-        default="test",
-        choices=["train", "validation", "test"],
-        help="Which downloaded split to evaluate against (usually 'test').",
+        default="eval",
+        choices=["train", "validation", "test", "eval"],
+        help="Which downloaded split to evaluate against. 'eval' (the default) is the "
+        "shared, larger FLEURS test+validation set in ../data/ - see data/README.md.",
     )
     parser.add_argument("--config", default=None, help="Override path to a config.yaml.")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only evaluate the first N rows of the split (e.g. --limit 100 out of a "
+        "698-clip 'eval' split) - for a quicker/cheaper run without downloading a "
+        "separate smaller split.",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.language, args.config)
@@ -91,6 +100,8 @@ def main() -> None:
     # The manifest is the spreadsheet listing every clip in this split and its
     # correct transcript - produced earlier by prepare_dataset.py.
     manifest = load_manifest(cfg, args.split)
+    if args.limit:
+        manifest = manifest.head(args.limit)
 
     # Load the model and its processor once, before the loop, since loading is
     # slow and we want to reuse the same loaded model for every clip.

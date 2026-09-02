@@ -1,0 +1,12 @@
+# English overrides on top of chirp/lib/default_config.yaml - the
+# baseline/control language, same dataset choice as whisper/english/config.yaml
+# and gemini/english/config.yaml.
+language_name: english
+language_code: en
+dataset_id: google/fleurs
+dataset_config: en_us
+text_column: transcription
+audio_column: audio
+
+stt:
+  language_codes: [en-US]

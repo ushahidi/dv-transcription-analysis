@@ -1,0 +1,14 @@
+# Kiswahili overrides on top of gemini/lib/default_config.yaml.
+#
+# Deliberately the same dataset_id/dataset_config/language_code as
+# whisper/kiswahili/config.yaml (google/fleurs, sw_ke) so this engine is
+# scored on the same underlying clips as the Whisper baselines - the
+# `datasets` library streams a split in a fixed order (no shuffling), so
+# pulling the first N `test` examples here reproduces the identical 20 clips,
+# even though this folder never reads whisper/'s downloaded files directly.
+language_name: swahili
+language_code: sw
+dataset_id: google/fleurs
+dataset_config: sw_ke
+text_column: transcription
+audio_column: audio

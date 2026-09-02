@@ -62,14 +62,23 @@ It would be needed if a source with MP3/OGG audio is added later
 
 All commands below work identically for `--language english` and `--language kiswahili`.
 
+The wav files + manifests these scripts read/write now live in one shared
+[../data/](../data/README.md) folder (not a private `whisper/<language>/data/`
+copy) - see that folder's README for why. `whisper/scripts/prepare_dataset.py`
+below still works the same way for `train`/`validation` (this project's
+fine-tuning splits - the other engine folders don't fine-tune, so those two
+splits are still whisper-specific); for the shared `test`-set comparison
+against gemini/chirp/wav2vec2, use `data/scripts/prepare_dataset.py --split eval`
+instead (a larger, combined test+validation set - see ../data/README.md).
+
 ```powershell
 # 1. Pull a small dataset subset (defaults to data.max_samples[<split>] in config.yaml)
 python whisper/scripts/prepare_dataset.py --language english --split train
 python whisper/scripts/prepare_dataset.py --language english --split validation
-python whisper/scripts/prepare_dataset.py --language english --split test
+python data/scripts/prepare_dataset.py --language english --split eval
 
 # 2. Baseline accuracy of the pretrained model (WER + per-sample confidence)
-python whisper/scripts/run_baseline.py --language english --model openai/whisper-tiny
+python whisper/scripts/run_baseline.py --language english --model openai/whisper-tiny --split eval
 
 # 3. Fine-tune (CPU smoke test - see below)
 python whisper/scripts/finetune.py --language english --model openai/whisper-tiny
