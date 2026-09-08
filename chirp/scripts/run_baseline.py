@@ -1,6 +1,7 @@
 """CLI: run Google Cloud Speech-to-Text (Chirp) over a language's local test
-set and report WER plus native per-sample confidence, in the same shape as
-whisper/scripts/run_baseline.py and gemini/scripts/run_baseline.py.
+set and report WER, in the same shape as whisper/scripts/run_baseline.py and
+gemini/scripts/run_baseline.py. Per-sample confidence is not reported here -
+see chirp/lib/stt_client.py's transcribe docstring for why.
 
 NOT RUNNABLE YET - needs a GCP project with billing enabled, the
 Speech-to-Text API turned on, and a credential (GOOGLE_APPLICATION_CREDENTIALS
@@ -78,19 +79,32 @@ def main() -> None:
         audio_path = cfg.wav_dir / row["file_name"]
         print(f"[{i + 1}/{len(manifest)}] {row['file_name']}...", end=" ", flush=True)
 
-        result = transcribe(
-            client,
-            audio_path,
-            project,
-            cfg.gcp_location,
-            model_name,
-            cfg.stt_language_codes,
-        )
-        hypothesis = result["hypothesis"]
-        confidence = result["confidence"]
-
-        wer = compute_wer([row["transcript"]], [hypothesis])
-        print(f"wer={wer:.3f}")
+        # A single clip failing outright (e.g. Cloud STT staying under
+        # sustained 5xx/rate-limit errors past transcribe's own retry/backoff
+        # budget) shouldn't take down the whole run - see
+        # gemini/scripts/run_baseline.py and wav2vec2/scripts/run_baseline.py,
+        # which already do this. Record it as a failed sample and keep going,
+        # rather than losing every clip that already succeeded.
+        try:
+            result = transcribe(
+                client,
+                audio_path,
+                project,
+                cfg.gcp_location,
+                model_name,
+                cfg.stt_language_codes,
+            )
+            hypothesis = result["hypothesis"]
+            confidence = result["confidence"]
+            wer = compute_wer([row["transcript"]], [hypothesis])
+            error = None
+            print(f"wer={wer:.3f}")
+        except Exception as exc:  # noqa: BLE001 - deliberately broad, see comment above
+            hypothesis = None
+            confidence = None
+            wer = None
+            error = str(exc)
+            print(f"FAILED: {error}")
 
         per_sample.append(
             {
@@ -99,19 +113,31 @@ def main() -> None:
                 "hypothesis": hypothesis,
                 "wer": wer,
                 "confidence": confidence,
+                "error": error,
             }
         )
 
-    references = [r["reference"] for r in per_sample]
-    hypotheses = [r["hypothesis"] for r in per_sample]
-    overall_wer = compute_wer(references, hypotheses)
-    mean_confidence = sum(r["confidence"] for r in per_sample) / len(per_sample) if per_sample else 0.0
+    succeeded = [r for r in per_sample if r["error"] is None]
+    failed = [r for r in per_sample if r["error"] is not None]
+
+    references = [r["reference"] for r in succeeded]
+    hypotheses = [r["hypothesis"] for r in succeeded]
+    overall_wer = compute_wer(references, hypotheses) if succeeded else None
+
+    # Cloud STT's `confidence` is currently always None (see
+    # chirp/lib/stt_client.py's transcribe docstring) - this averages only
+    # over non-None values, same pattern as gemini/scripts/run_baseline.py,
+    # so mean_confidence naturally comes out as None rather than a
+    # misleading ~0.0 constant.
+    confidences = [r["confidence"] for r in succeeded if r["confidence"] is not None]
+    mean_confidence = sum(confidences) / len(confidences) if confidences else None
 
     result = {
         "language": cfg.language_name,
         "model": model_name,
         "split": args.split,
         "num_samples": len(per_sample),
+        "num_failed": len(failed),
         "overall_wer": overall_wer,
         "mean_confidence": mean_confidence,
         "date": datetime.now(timezone.utc).isoformat(),
@@ -125,9 +151,12 @@ def main() -> None:
     json_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     pd.DataFrame(per_sample).to_csv(csv_path, index=False)
 
+    wer_str = f"{overall_wer:.3f}" if overall_wer is not None else "n/a"
+    conf_str = f"{mean_confidence:.3f}" if mean_confidence is not None else "n/a"
     print(
         f"{cfg.language_name} / {model_name} / {args.split}: "
-        f"WER={overall_wer:.3f}  mean_confidence={mean_confidence:.3f}  n={len(per_sample)}"
+        f"WER={wer_str}  mean_confidence={conf_str}  "
+        f"n={len(per_sample)} (failed={len(failed)})"
     )
     print(f"Results: {json_path}")
 

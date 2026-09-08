@@ -30,8 +30,19 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-from google.api_core.exceptions import ResourceExhausted
+from google.api_core.exceptions import (
+    DeadlineExceeded,
+    InternalServerError,
+    ResourceExhausted,
+    ServiceUnavailable,
+)
 from google.cloud import speech_v2
+
+# Transient errors worth retrying: 429 (rate limit) plus the 5xx/deadline
+# errors Cloud STT routinely raises under load. None of the latter subclass
+# ResourceExhausted, so each needs to be named explicitly - same rationale as
+# gemini/lib/gemini_client.py retrying ServerError (any 5xx) alongside 429.
+_RETRYABLE_ERRORS = (ResourceExhausted, ServiceUnavailable, InternalServerError, DeadlineExceeded)
 
 # Same rationale as gemini/lib/gemini_client.py's MIN_SECONDS_BETWEEN_CALLS:
 # space calls out proactively so a 20-clip run doesn't lean entirely on
@@ -78,9 +89,14 @@ def transcribe(
     Returns a dict with:
       - "hypothesis": the transcript text (the top alternative of the first
         result; empty string if Chirp returned no speech).
-      - "confidence": Cloud STT v2's own per-alternative confidence (0-1),
-        native to the API response - unlike gemini/lib/gemini_client.py's
-        best-effort proxy, this is always present when a result is returned.
+      - "confidence": always None. Cloud STT v2's Chirp models do not
+        reliably populate `SpeechRecognitionAlternative.confidence` for
+        plain `recognize()` calls - it comes back as a constant 0.0, which
+        would read as a real (terrible) confidence signal if surfaced as-is.
+        Rather than emit a misleading number, this is left unset here;
+        `chirp/scripts/run_baseline.py` skips it the same way
+        `gemini/scripts/run_baseline.py` skips Gemini's occasionally-missing
+        `avg_logprobs`.
     """
     audio_bytes = audio_path.read_bytes()
     recognizer = f"projects/{project}/locations/{location}/recognizers/_"
@@ -99,16 +115,16 @@ def transcribe(
                 recognizer=recognizer, config=config, content=audio_bytes
             )
             break
-        except ResourceExhausted as exc:
+        except _RETRYABLE_ERRORS as exc:
             last_error = exc
     else:
         raise RuntimeError(
-            f"Cloud STT rate-limited {max_retries} times in a row transcribing "
-            f"{audio_path.name}"
+            f"Cloud STT stayed rate-limited/unavailable for {max_retries} retries in a "
+            f"row transcribing {audio_path.name}"
         ) from last_error
 
     if not response.results or not response.results[0].alternatives:
-        return {"hypothesis": "", "confidence": 0.0}
+        return {"hypothesis": "", "confidence": None}
 
     top = response.results[0].alternatives[0]
-    return {"hypothesis": top.transcript, "confidence": top.confidence}
+    return {"hypothesis": top.transcript, "confidence": None}

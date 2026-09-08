@@ -99,13 +99,23 @@ def transcribe(model: AutoModelForCTC, processor: AutoProcessor, audio, sample_r
     blank_id = model.config.pad_token_id  # transformers' CTC convention: pad_token_id doubles as the blank class
     frame_ids = predicted_ids[0]
     frame_confidences = probs[0].max(dim=-1).values
-    kept = frame_ids != blank_id
-    if kept.any():
-        confidence = frame_confidences[kept].mean().item()
+    if blank_id is None:
+        # No blank id to exclude on this checkpoint - falling back to
+        # `frame_ids != blank_id` here would silently compare against None
+        # and be all-True, making the "exclude blank frames" step a no-op
+        # without any indication it happened. Averaging over every frame
+        # (blanks included) is a known-degraded fallback, not a crash - but
+        # explicit about why, rather than a silent difference in behavior.
+        confidence = frame_confidences.mean().item()
     else:
-        # Every frame decoded to blank - i.e. the model produced no speech at
-        # all for this clip. Rather than silently averaging over nothing
-        # (which torch.mean would NaN on), report zero confidence explicitly.
-        confidence = 0.0
+        kept = frame_ids != blank_id
+        if kept.any():
+            confidence = frame_confidences[kept].mean().item()
+        else:
+            # Every frame decoded to blank - i.e. the model produced no
+            # speech at all for this clip. Rather than silently averaging
+            # over nothing (which torch.mean would NaN on), report zero
+            # confidence explicitly.
+            confidence = 0.0
 
     return {"hypothesis": hypothesis, "confidence": confidence}

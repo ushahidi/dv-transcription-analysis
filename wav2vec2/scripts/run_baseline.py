@@ -37,8 +37,17 @@ from lib.model_utils import load_model, load_processor, transcribe
 
 def _read_wav(path: Path, target_sr: int):
     """Read a .wav file from disk into a plain array of numbers - see
-    whisper/scripts/run_baseline.py's `_read_wav` for the full explanation."""
+    whisper/scripts/run_baseline.py's `_read_wav` for the full explanation.
+
+    `soundfile` returns a 2D (frames, channels) array for a multi-channel
+    file, not the 1D array the rest of this pipeline (and librosa.resample)
+    assumes - resampling that shape directly would resample along the wrong
+    axis. FLEURS' clips are mono so this hasn't fired yet, but downmixing to
+    mono first (plain average across channels) keeps this correct for any
+    stereo file too."""
     audio, sr = sf.read(path)
+    if audio.ndim > 1:
+        audio = audio.mean(axis=1)
     if sr != target_sr:
         import librosa
 
