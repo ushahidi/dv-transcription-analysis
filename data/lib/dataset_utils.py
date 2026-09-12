@@ -104,6 +104,29 @@ def download_split(
     return df
 
 
+def load_manifest(cfg, split: str) -> pd.DataFrame:
+    """Read back the manifest CSV for a split that was already downloaded.
+
+    This is now THE load_manifest every engine folder's run_baseline.py
+    calls - gemini/, chirp/, and wav2vec2/ used to each keep an identical
+    copy of this exact function (only ever reading, never downloading,
+    since data/ took over downloading); this is the one copy, and those
+    three were deleted. It works for any `cfg` with a `.manifest_path(split)`
+    method, which includes both this file's own `DatasetConfig` and every
+    engine's own `PipelineConfig` (whisper/gemini/chirp/wav2vec2 all define
+    one) - duck-typed on purpose so this doesn't need to import any of them.
+    """
+    path = cfg.manifest_path(split)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"No manifest for split '{split}' at {path}. Run "
+            f"`python data/scripts/prepare_dataset.py --language {cfg.language} "
+            f"--split {split}` first (or whisper/scripts/prepare_dataset.py for "
+            f"'train'/'validation' - see data/README.md's \"Prefer one writer\" note)."
+        )
+    return pd.read_csv(path)
+
+
 def _update_dataset_card(cfg: DatasetConfig, local_split: str, source_splits: List[str], num_samples: int) -> None:
     path = cfg.dataset_card_path()
     card = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

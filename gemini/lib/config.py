@@ -58,22 +58,18 @@ class PipelineConfig:
         self.language = language
 
         # --- Basic identity of this language ---
+        # Only language_name is actually used here (in the transcription
+        # prompt and the results JSON's "language" field) - dataset_id,
+        # dataset_config, text_column, audio_column, and language_code used
+        # to live here too, back when this folder downloaded its own copy of
+        # the data; now that data/ owns downloading (see
+        # data/lib/config.py's DatasetConfig, the equivalent for those
+        # fields), keeping unused duplicates here would just be one more
+        # place to forget to update.
         self.language_name: str = raw["language_name"]
-        self.language_code: str = raw["language_code"]
-
-        # --- Where the test data comes from (same source as whisper/, see
-        # gemini/kiswahili/config.yaml for why this reproduces the same clips) ---
-        self.dataset_id: str = raw["dataset_id"]
-        self.dataset_config: str = raw["dataset_config"]
-        self.text_column: str = raw.get("text_column", "transcription")
-        self.audio_column: str = raw.get("audio_column", "audio")
 
         # --- Which Gemini model to call ---
         self.gemini_model: str = raw["gemini"]["model"]
-
-        # --- Audio + dataset-size settings ---
-        self.sample_rate: int = raw["data"]["sample_rate"]
-        self.max_samples: dict = raw["data"]["max_samples"]
 
         # --- Folder layout for this language ---
         # results/ is this folder's own output; data/ (wav files + manifest)
@@ -85,13 +81,8 @@ class PipelineConfig:
 
     def manifest_path(self, split: str) -> Path:
         """Path to the CSV list of audio clips + transcripts for one split
-        (e.g. "train", "validation", or "test")."""
+        (e.g. "train", "validation", "test", or "eval")."""
         return self.data_dir / f"manifest_{split}.csv"
-
-    def dataset_card_path(self) -> Path:
-        """Path to a small JSON file recording exactly which dataset/version was
-        downloaded and when - kept for reproducibility."""
-        return self.data_dir / "dataset_card.json"
 
 
 def load_config(language: str, config_path: Optional[str] = None) -> PipelineConfig:

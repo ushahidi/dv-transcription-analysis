@@ -11,8 +11,6 @@ model:
   fp16: false    # CTC forward passes are cheap enough that this hasn't been needed; flip on for a GPU run if it helps
 
 data:
+  # sample_rate is the only field still used here (see wav2vec2/lib/config.py) -
+  # max_samples was download-time-only, and download is data/'s job now.
   sample_rate: 16000
-  max_samples:
-    train: 80
-    validation: 20
-    test: 20

@@ -55,16 +55,14 @@ class PipelineConfig:
         self.language = language
 
         # --- Basic identity of this language ---
+        # Only language_name is actually used here (the results JSON's
+        # "language" field) - dataset_id/dataset_config/text_column/
+        # audio_column/language_code used to live here too, back when this
+        # folder downloaded its own copy of the data; now that data/ owns
+        # downloading (see data/lib/config.py's DatasetConfig), keeping
+        # unused duplicates here would just be one more place to forget to
+        # update.
         self.language_name: str = raw["language_name"]
-        self.language_code: str = raw["language_code"]
-
-        # --- Where the test data comes from (same source as whisper/,
-        # gemini/, chirp/ - see wav2vec2/kiswahili/config.yaml for why this
-        # reproduces the same clips) ---
-        self.dataset_id: str = raw["dataset_id"]
-        self.dataset_config: str = raw["dataset_config"]
-        self.text_column: str = raw.get("text_column", "transcription")
-        self.audio_column: str = raw.get("audio_column", "audio")
 
         # --- Which wav2vec2/CTC checkpoint, and where it runs ---
         self.model_name: str = raw["model"]["name"]
@@ -82,9 +80,12 @@ class PipelineConfig:
         self.model_type: str = raw["model"].get("type", "ctc")
         self.mms_lang_code: Optional[str] = raw["model"].get("lang_code")
 
-        # --- Audio + dataset-size settings ---
+        # --- Audio settings ---
+        # sample_rate is the one "data:" field this folder still needs (used
+        # by _read_wav's resample check and the processor() call at
+        # inference time) - max_samples is gone, that was download-time-only
+        # and download is data/'s job now.
         self.sample_rate: int = raw["data"]["sample_rate"]
-        self.max_samples: dict = raw["data"]["max_samples"]
 
         # --- Folder layout for this language ---
         # results/ is this folder's own output; data/ (wav files + manifest)
@@ -96,9 +97,6 @@ class PipelineConfig:
 
     def manifest_path(self, split: str) -> Path:
         return self.data_dir / f"manifest_{split}.csv"
-
-    def dataset_card_path(self) -> Path:
-        return self.data_dir / "dataset_card.json"
 
 
 def load_config(language: str, config_path: Optional[str] = None) -> PipelineConfig:

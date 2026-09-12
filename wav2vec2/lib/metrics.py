@@ -31,6 +31,12 @@ def compute_wer(references: Sequence[str], hypotheses: Sequence[str]) -> float:
 
     pairs = [(r, h) for r, h in zip(norm_refs, norm_hyps) if r.strip()]
     if not pairs:
-        return 0.0
+        # NOT 0.0 - see whisper/lib/metrics.py's compute_wer for why an empty
+        # pair list must not look like a perfect score.
+        raise ValueError(
+            "compute_wer: every reference normalized to empty text (e.g. "
+            "punctuation-only) - there is nothing to score, so no WER can be "
+            "computed for this batch."
+        )
     refs, hyps = zip(*pairs)
     return jiwer.wer(list(refs), list(hyps))

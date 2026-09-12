@@ -35,6 +35,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass   # only if activatio
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r gemini/requirements.txt
+pip install -r data/requirements.txt   # needed for data/scripts/prepare_dataset.py - see ../data/README.md
 ```
 
 No torch/transformers here - this folder never loads a local model, so it's a
@@ -46,24 +47,38 @@ much lighter install than `whisper/`'s.
   every transcription call.
 - **`GEMINI_API_KEY`** - a free key from
   [aistudio.google.com/apikey](https://aistudio.google.com/apikey). No Google
-  Cloud project, no billing account. Set it before running `run_baseline.py`:
+  Cloud project, no billing account. Copy `.env.example` to `.env` and fill it
+  in, then load it into your shell before running anything (nothing in this
+  repo reads `.env` automatically - see `.env.example` for exact commands):
   ```powershell
+  # PowerShell
   $env:GEMINI_API_KEY = "..."
   ```
-- The free Developer API tier is rate-limited (roughly 5-15 requests/minute).
-  `gemini/lib/gemini_client.py` paces calls and retries on 429s, so a 20-clip
-  run should complete without manual intervention, just slower than the raw
-  API allows.
+  ```bash
+  # bash
+  export GEMINI_API_KEY="..."
+  ```
+- The free Developer API tier is rate-limited (roughly 5-15 requests/minute),
+  and separately, Gemini occasionally returns `503 UNAVAILABLE` ("experiencing
+  high demand") under real-world load - confirmed, observed behavior at scale,
+  not a hypothetical. `gemini/lib/gemini_client.py` paces calls and retries on
+  both `429` (rate limit) and any `5xx` (server-side unavailability), so a run
+  should complete without manual intervention, just slower than the raw API
+  allows - though at a few hundred clips, expect some runs to still see a
+  handful of failures make it past the retry budget (`run_baseline.py` records
+  those as failed samples and keeps going rather than aborting - see below).
 
 ## Running the pipeline
 
 ```powershell
 # 1. Pull the eval set, if not already done - see ../data/README.md (shared
-#    across every engine folder, not just this one)
+#    across every engine folder, not just this one). Default 'eval' split is
+#    several hundred clips (698 for Kiswahili) - use --limit for a quicker run.
 python data/scripts/prepare_dataset.py --language kiswahili --split eval
 
 # 2. Baseline accuracy (WER + best-effort confidence)
 python gemini/scripts/run_baseline.py --language kiswahili --split eval
+python gemini/scripts/run_baseline.py --language kiswahili --limit 100   # first 100 clips only
 ```
 
 Results land in `gemini/<language>/results/baseline_<model>_<split>.{json,csv}` -
@@ -71,6 +86,12 @@ same shape as `whisper/`'s results files, so the two are directly diffable.
 Confidence is best-effort here: Gemini's `generateContent` response only
 sometimes exposes `avg_logprobs`; when it doesn't, `confidence` is `null` for
 that sample rather than a misleading guess.
+
+A clip that fails outright (retries exhausted) is recorded with an empty
+hypothesis and scored as fully wrong, not dropped - see the module docstring
+in `gemini/scripts/run_baseline.py`. If anything failed, the script exits
+non-zero even though it still writes full results, so a failed run is safe to
+detect from an exit code alone without also parsing the JSON.
 
 ## Why a separate folder from whisper/
 
@@ -91,18 +112,22 @@ audio stopped being cheap.
 
 ## Choosing a model
 
-`gemini/kiswahili/config.yaml` (via `gemini/lib/default_config.yaml`) defaults
-to `gemini-flash-latest` - a Google-maintained alias that always resolves to
-the current default Flash model, so it doesn't need bumping every time Google
-ships a new one. For a reproducible comparison run, pin an exact model id
-instead (e.g. `gemini-2.5-flash`) via `--model` or in `config.yaml` - check the
-current alias/model list at
+`gemini/lib/default_config.yaml` defaults to a **pinned, dated model id**
+(`gemini-2.5-flash`), not the `gemini-flash-latest` alias - deliberately.
+`-latest` silently changes what it points to over time, which breaks
+reproducibility for comparison numbers meant to be cited later, and in
+practice it's also been the less reliable of the two: a real run against
+`gemini-flash-latest` hit sustained `503 UNAVAILABLE` errors that the same
+run against a pinned `gemini-2.5-flash` didn't. Override via `--model` or
+`config.yaml` if you want to try a different (or newer) model - check the
+current model list at
 [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models)
-before a real benchmark run, since Gemini model names change over time.
+- but for anything you intend to compare against a previous run, pin a dated
+id rather than an alias.
 
 ## Adding a new language
 
-Create `gemini/<language>/config.yaml` with `language_name`, `language_code`,
-and a `gemini.model`, plus a matching `data/<language>/config.yaml` (see
+Create `gemini/<language>/config.yaml` with `language_name` (and optionally a
+`gemini.model` override), plus a matching `data/<language>/config.yaml` (see
 [../data/README.md](../data/README.md)) if that language isn't already
 downloaded - then rerun the two commands above with `--language <language>`.

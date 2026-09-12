@@ -6,19 +6,26 @@ compare against [whisper/](../whisper/README.md) and
 [gemini/](../gemini/README.md), scored on the same shared FLEURS clips in
 [../data/](../data/README.md).
 
-## Status: not runnable yet
+## Status: blocked on GCP setup + ADC, not on unfinished code
 
-This folder is fully written and structurally ready, but **cannot be run
-end-to-end until a GCP project with billing is set up** - that's a manual,
-account-level step nobody else can do. Once it exists:
+The code in this folder is complete and ready to run - what's actually
+missing is account-level setup nobody else can do on your behalf:
 
-1. Enable the Cloud Speech-to-Text API on the project.
-2. Create a service account with Speech-to-Text access and download its JSON
-   key (or use `gcloud auth application-default login` instead).
-3. Set two environment variables before running anything below:
+1. A GCP project with billing enabled.
+2. The Cloud Speech-to-Text API turned on for that project.
+3. A credential - Application Default Credentials (ADC), which is either:
+   - `gcloud auth application-default login` (no JSON file needed), or
+   - a service-account JSON key + `GOOGLE_APPLICATION_CREDENTIALS` pointing at it.
+4. `GOOGLE_CLOUD_PROJECT` set to the project id either way:
    ```powershell
+   # PowerShell
    $env:GOOGLE_CLOUD_PROJECT = "your-project-id"
-   $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\service-account.json"
+   $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\path\to\service-account.json"   # if using a JSON key
+   ```
+   ```bash
+   # bash
+   export GOOGLE_CLOUD_PROJECT="your-project-id"
+   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"   # if using a JSON key
    ```
 
 ## Why Chirp, and why it's separate from whisper/ and gemini/
@@ -37,9 +44,11 @@ open-weights model this repo loads and runs locally). It can't:
   number is to run this folder's `run_baseline.py` once GCP access exists.
 - **Cost is not the blocker.** Chirp is billed at $0.016/minute (same rate for
   Chirp 2 and Chirp 3, confirmed from Google's pricing page and Artificial
-  Analysis). This repo's 20-clip Kiswahili test set averages 14.3s/clip, so
-  100 similar clips ≈ 23.8 minutes ≈ **~$0.38** - trivial, and covered many
-  times over by GCP's standard $300 new-account credit.
+  Analysis). The full 698-clip Kiswahili `eval` set (see ../data/README.md)
+  totals ~164 minutes of audio ≈ **~$2.62** for the whole thing - trivial,
+  and covered many times over by GCP's standard $300 new-account credit. Use
+  `--limit 100` for a cheaper/quicker first pass (≈$0.35-0.40) if you want to
+  sanity-check the setup before running the full set.
 
 This folder is structurally independent of `whisper/` and `gemini/` - its own
 config/metrics/model-calling code, not importing either. The one thing that
@@ -74,11 +83,14 @@ No torch/transformers here - this folder never loads a local model.
 ## Running the pipeline (once GCP access exists)
 
 ```powershell
-# 1. Pull the eval set, if not already done - see ../data/README.md
+# 1. Pull the eval set, if not already done - see ../data/README.md. Default
+#    'eval' split is several hundred clips (698 for Kiswahili) - use --limit
+#    for a quicker/cheaper first pass.
 python data/scripts/prepare_dataset.py --language kiswahili --split eval
 
 # 2. Baseline accuracy (WER)
 python chirp/scripts/run_baseline.py --language kiswahili --split eval
+python chirp/scripts/run_baseline.py --language kiswahili --limit 100   # first 100 clips only
 ```
 
 Confidence is not reported for this engine: Cloud STT v2's Chirp models don't
@@ -89,7 +101,10 @@ and `mean_confidence` in the results comes out `null` accordingly.
 
 Results land in `chirp/<language>/results/baseline_<model>_<split>.{json,csv}` -
 same shape as `whisper/`'s and `gemini/`'s results files, so all three are
-directly diffable.
+directly diffable. A clip that fails outright (retries exhausted on 429/5xx)
+is recorded with an empty hypothesis and scored as fully wrong, not dropped -
+see the module docstring in `chirp/scripts/run_baseline.py`. If anything
+failed, the script exits non-zero even though it still writes full results.
 
 ## Choosing a model and region
 
@@ -107,7 +122,7 @@ for Chichewa/Nyanja, which Chirp 3 dropped but Chirp 2 still covers).
 
 ## Adding a new language
 
-Create `chirp/<language>/config.yaml` with `language_name`, `language_code`,
-and `stt.language_codes`, plus a matching `data/<language>/config.yaml` (see
+Create `chirp/<language>/config.yaml` with `language_name` and
+`stt.language_codes`, plus a matching `data/<language>/config.yaml` (see
 [../data/README.md](../data/README.md)) if that language isn't already
 downloaded - then rerun the two commands above with `--language <language>`.

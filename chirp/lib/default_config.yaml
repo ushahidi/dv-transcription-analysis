@@ -22,9 +22,6 @@ gcp:
   # environment variable instead.
   location: us-central1
 
-data:
-  sample_rate: 16000
-  max_samples:
-    train: 80
-    validation: 20
-    test: 20
+# No `data:` section (sample_rate/max_samples) - this folder doesn't download
+# anything anymore, see data/lib/config.py's DatasetConfig for where that
+# now lives.

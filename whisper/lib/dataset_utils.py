@@ -3,14 +3,17 @@
 WHAT THIS FILE DOES, IN PLAIN TERMS:
 This is where we download a handful of real speech recordings (with their
 correct written transcripts) from a public dataset on the internet, and save
-them to our own project folder in a simple format: one .wav sound file per
-clip, plus a "manifest" - a spreadsheet-like CSV file listing every clip's
-filename, its correct transcript, how long it is, etc.
+them to data/<language>/ (shared with every other engine folder - see
+data/README.md) in a simple format: one .wav sound file per clip, plus a
+"manifest" - a spreadsheet-like CSV file listing every clip's filename, its
+correct transcript, how long it is, etc.
 
-Later scripts (run_baseline.py, finetune.py) never talk to the internet
-dataset directly - they just read the manifest + wav files this code produces.
-That keeps everything downstream simple and offline-friendly once the data has
-been pulled once.
+`download_split` here is only ever invoked for `train`/`validation` (via
+whisper/scripts/prepare_dataset.py, for fine-tuning) - `test`/`eval` are
+downloaded exclusively by data/scripts/prepare_dataset.py instead, so there's
+only ever one writer for any given split. run_baseline.py never downloads
+anything itself; it just reads whatever manifest + wav files already exist in
+data/<language>/, regardless of which script wrote them.
 
 A NOTE ON WHY WE DECODE AUDIO OURSELVES:
 The Hugging Face `datasets` library can normally decode audio automatically,
@@ -149,11 +152,15 @@ def load_manifest(cfg: PipelineConfig, split: str) -> pd.DataFrame:
     """
     path = cfg.manifest_path(split)
     if not path.exists():
-        raise FileNotFoundError(
-            f"No manifest for split '{split}' at {path}. Run "
-            f"`python whisper/scripts/prepare_dataset.py --language {cfg.language} "
-            f"--split {split}` first."
-        )
+        # 'test'/'eval' are downloaded by the shared data/scripts/prepare_dataset.py
+        # (not this folder's own prepare_dataset.py, which is scoped to
+        # train/validation for fine-tuning - see whisper/lib/dataset_utils.py's
+        # module docstring) - point at whichever one actually owns this split.
+        if split in ("test", "eval"):
+            command = f"python data/scripts/prepare_dataset.py --language {cfg.language} --split {split}"
+        else:
+            command = f"python whisper/scripts/prepare_dataset.py --language {cfg.language} --split {split}"
+        raise FileNotFoundError(f"No manifest for split '{split}' at {path}. Run `{command}` first.")
     return pd.read_csv(path)
 
 

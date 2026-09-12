@@ -1,15 +1,8 @@
 # Kiswahili overrides on top of wav2vec2/lib/default_config.yaml.
 #
-# Same dataset_id/dataset_config/language_code as whisper/, gemini/, and
-# chirp/'s kiswahili/config.yaml (google/fleurs, sw_ke) - see
-# wav2vec2/lib/dataset_utils.py for why this reproduces the same clips
-# without sharing any code or files with those folders.
+# No dataset_id/dataset_config/etc. here - this folder doesn't download
+# anything itself anymore (see data/kiswahili/config.yaml, which owns that).
 language_name: swahili
-language_code: sw
-dataset_id: google/fleurs
-dataset_config: sw_ke
-text_column: transcription
-audio_column: audio
 
 model:
   # https://huggingface.co/thinkKenya/wav2vec2-large-xls-r-300m-sw - Wav2Vec2ForCTC,

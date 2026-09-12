@@ -45,25 +45,19 @@ class PipelineConfig:
         self.language = language
 
         # --- Basic identity of this language ---
+        # Only language_name is actually used here (the results JSON's
+        # "language" field) - dataset_id/dataset_config/text_column/
+        # audio_column/language_code used to live here too, back when this
+        # folder downloaded its own copy of the data; now that data/ owns
+        # downloading (see data/lib/config.py's DatasetConfig), keeping
+        # unused duplicates here would just be one more place to forget to
+        # update.
         self.language_name: str = raw["language_name"]
-        self.language_code: str = raw["language_code"]
-
-        # --- Where the test data comes from (same source as whisper/ and
-        # gemini/, see chirp/kiswahili/config.yaml for why this reproduces
-        # the same clips) ---
-        self.dataset_id: str = raw["dataset_id"]
-        self.dataset_config: str = raw["dataset_config"]
-        self.text_column: str = raw.get("text_column", "transcription")
-        self.audio_column: str = raw.get("audio_column", "audio")
 
         # --- Cloud Speech-to-Text settings ---
         self.stt_model: str = raw["stt"]["model"]
         self.stt_language_codes: List[str] = raw["stt"]["language_codes"]
         self.gcp_location: str = raw["gcp"]["location"]
-
-        # --- Audio + dataset-size settings ---
-        self.sample_rate: int = raw["data"]["sample_rate"]
-        self.max_samples: dict = raw["data"]["max_samples"]
 
         # --- Folder layout for this language ---
         # results/ is this folder's own output; data/ (wav files + manifest)
@@ -75,9 +69,6 @@ class PipelineConfig:
 
     def manifest_path(self, split: str) -> Path:
         return self.data_dir / f"manifest_{split}.csv"
-
-    def dataset_card_path(self) -> Path:
-        return self.data_dir / "dataset_card.json"
 
 
 def load_config(language: str, config_path: Optional[str] = None) -> PipelineConfig:

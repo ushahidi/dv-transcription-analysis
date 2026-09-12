@@ -30,7 +30,17 @@ directly comparable without the folders sharing *code*:
 - [gemini/README.md](gemini/README.md) - Gemini Flash (free Developer API) baseline
   WER evaluation.
 - [chirp/README.md](chirp/README.md) - Google Cloud Speech-to-Text (Chirp) baseline
-  WER evaluation. Not runnable yet - needs a GCP project + billing set up first.
+  WER evaluation. Blocked on GCP project + billing + ADC setup, not on
+  unfinished code - see that README for exactly what's missing.
 - [wav2vec2/README.md](wav2vec2/README.md) - open, self-hosted wav2vec2/CTC
   checkpoints (`thinkKenya/wav2vec2-large-xls-r-300m-sw`, Meta's MMS) baseline
   WER evaluation.
+
+## Secrets
+
+Copy [.env.example](.env.example) to `.env` and fill in real values. `.env`
+is gitignored and must never be committed. **Nothing in this repo loads
+`.env` automatically** - only `os.environ` is read, so a key that only
+exists in `.env` (never exported into your actual shell) is silently invisible
+to every script here. Load it into your shell first - see `.env.example` for
+the exact PowerShell/bash commands.

@@ -50,11 +50,14 @@ runs locally.
 ## Running the pipeline
 
 ```powershell
-# 1. Pull the eval set, if not already done - see ../data/README.md
+# 1. Pull the eval set, if not already done - see ../data/README.md. Default
+#    'eval' split is several hundred clips (698 for Kiswahili) - use --limit
+#    for a quicker/cheaper first pass.
 python data/scripts/prepare_dataset.py --language kiswahili --split eval
 
 # 2. Baseline accuracy (WER + confidence)
 python wav2vec2/scripts/run_baseline.py --language kiswahili --split eval
+python wav2vec2/scripts/run_baseline.py --language kiswahili --limit 100   # first 100 clips only
 ```
 
 Results land in `wav2vec2/<language>/results/baseline_<model>_<split>.{json,csv}` -
@@ -64,6 +67,11 @@ different computation from Whisper's or Gemini's (see
 generate autoregressively, so there's no equivalent token-by-token generation
 probability; this uses the mean max-softmax probability across the frames CTC
 decoding actually kept.
+
+A clip that fails outright is recorded with an empty hypothesis and scored as
+fully wrong, not dropped - see the module docstring in
+`wav2vec2/scripts/run_baseline.py`. If anything failed, the script exits
+non-zero even though it still writes full results.
 
 ## Why a separate folder, and why it still reuses Whisper's exact normalizer
 
@@ -98,6 +106,15 @@ model already fine-tuned for one language like thinkKenya's. Run it with:
 python wav2vec2/scripts/run_baseline.py --language kiswahili --config wav2vec2/kiswahili/config_mms.yaml
 ```
 
+Use `--config`, not `--model`, to select MMS: `--model` only swaps the
+checkpoint id, not `model.type`/`model.lang_code` (which still come from
+whichever `config.yaml` is loaded) - passing an MMS checkpoint via `--model`
+against a plain `config.yaml` would load the backbone with no adapter
+selected. `run_baseline.py` checks for this specific mismatch and refuses to
+run rather than silently producing a broken model, but it's a
+name-based heuristic (checkpoint id contains "mms"), not a certainty - the
+`--config` form is the reliable way to select it.
+
 **License warning:** `facebook/mms-1b-all` is **CC-BY-NC 4.0 - non-commercial
 use only**. It's included here purely as a benchmark data point (the same
 role `whisper-large-v3` plays as a reference baseline), **not** as something
@@ -113,8 +130,8 @@ itself.
 
 ## Adding a new language
 
-Create `wav2vec2/<language>/config.yaml` with `language_name`,
-`language_code`, and a `model.name` pointing at a checkpoint fine-tuned for
-that language, plus a matching `data/<language>/config.yaml` (see
+Create `wav2vec2/<language>/config.yaml` with `language_name` and a
+`model.name` pointing at a checkpoint fine-tuned for that language, plus a
+matching `data/<language>/config.yaml` (see
 [../data/README.md](../data/README.md)) if that language isn't already
 downloaded - then rerun the two commands above with `--language <language>`.

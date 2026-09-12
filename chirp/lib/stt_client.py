@@ -123,8 +123,15 @@ def transcribe(
             f"row transcribing {audio_path.name}"
         ) from last_error
 
-    if not response.results or not response.results[0].alternatives:
-        return {"hypothesis": "", "confidence": None}
-
-    top = response.results[0].alternatives[0]
-    return {"hypothesis": top.transcript, "confidence": None}
+    # Cloud STT v2 returns a SEQUENCE of results, not one - typically one per
+    # detected speech segment within the clip. Taking only results[0] would
+    # silently truncate the hypothesis to just the first segment for any
+    # clip with more than one, understating accuracy for reasons that have
+    # nothing to do with the model - join every result's top alternative
+    # instead.
+    hypothesis = " ".join(
+        result.alternatives[0].transcript
+        for result in response.results
+        if result.alternatives
+    ).strip()
+    return {"hypothesis": hypothesis, "confidence": None}

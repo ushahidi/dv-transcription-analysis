@@ -1,12 +1,7 @@
 # English overrides on top of wav2vec2/lib/default_config.yaml - the
-# baseline/control language, same dataset choice as the other three folders'
-# english/config.yaml.
+# baseline/control language. No dataset_id/etc. here - see
+# wav2vec2/kiswahili/config.yaml's comment for why.
 language_name: english
-language_code: en
-dataset_id: google/fleurs
-dataset_config: en_us
-text_column: transcription
-audio_column: audio
 
 model:
   # facebook/wav2vec2-base-960h - the standard English CTC baseline

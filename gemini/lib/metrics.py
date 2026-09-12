@@ -27,9 +27,16 @@ _normalize = jiwer.Compose(
         jiwer.RemovePunctuation(),
         jiwer.RemoveMultipleSpaces(),
         jiwer.Strip(),
-        jiwer.ReduceToListOfListOfWords(),
     ]
 )
+
+
+def normalize(text: str) -> str:
+    """Clean up a piece of text (lowercase, strip punctuation/extra spaces)
+    before comparing it to another piece of text. Same role as
+    whisper/lib/metrics.py's `normalize`, different implementation - see the
+    module docstring above."""
+    return _normalize(text or "")
 
 
 def compute_wer(references: Sequence[str], hypotheses: Sequence[str]) -> float:
@@ -38,17 +45,23 @@ def compute_wer(references: Sequence[str], hypotheses: Sequence[str]) -> float:
     two lists must line up one-to-one. A single number is returned summarizing
     accuracy across all of them combined, not one number per clip.
     """
-    # jiwer.wer can't handle a reference that normalizes down to nothing (e.g.
-    # a "transcript" that was just a punctuation mark) - skip those pairs
-    # rather than letting the whole calculation crash, same as whisper's
-    # compute_wer.
-    pairs = [(r, h) for r, h in zip(references, hypotheses) if r and r.strip()]
+    norm_refs = [normalize(r) for r in references]
+    norm_hyps = [normalize(h) for h in hypotheses]
+
+    # Filter on the NORMALIZED reference, not the raw one - a raw reference
+    # like "..." is non-empty and would slip past a raw-text check, only to
+    # normalize down to nothing anyway. (Checking the raw text here used to
+    # be the actual bug: whisper/lib/metrics.py and wav2vec2/lib/metrics.py
+    # already filtered post-normalization; this filtered pre-normalization,
+    # which is the inconsistency that mattered.)
+    pairs = [(r, h) for r, h in zip(norm_refs, norm_hyps) if r.strip()]
     if not pairs:
-        return 0.0
+        # NOT 0.0 - see whisper/lib/metrics.py's compute_wer for why an empty
+        # pair list must not look like a perfect score.
+        raise ValueError(
+            "compute_wer: every reference normalized to empty text (e.g. "
+            "punctuation-only) - there is nothing to score, so no WER can be "
+            "computed for this batch."
+        )
     refs, hyps = zip(*pairs)
-    return jiwer.wer(
-        list(refs),
-        list(hyps),
-        reference_transform=_normalize,
-        hypothesis_transform=_normalize,
-    )
+    return jiwer.wer(list(refs), list(hyps))
