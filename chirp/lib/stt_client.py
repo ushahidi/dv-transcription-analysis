@@ -6,10 +6,12 @@ how to send a single audio clip to Google Cloud Speech-to-Text and get back a
 transcript. Everything else in this folder (the CLI script, manifest loading,
 WER scoring) stays the same regardless of which engine produced the transcript.
 
-NOT RUNNABLE YET: this needs a GCP project with billing enabled, the
-Speech-to-Text API turned on, and a credential - none of which exist yet (see
-chirp/README.md). This file is written and structured so it's ready the moment
-that setup is done; it can't be exercised end-to-end from here in the meantime.
+Status: blocked on GCP setup + ADC, not on unfinished code (see chirp/README.md).
+This file is complete and ready to run - what's actually missing is
+account-level setup nobody else can do on your behalf: a GCP project with
+billing enabled, the Speech-to-Text API turned on, and a credential (ADC).
+It can't be exercised end-to-end from here until that setup exists on your
+account.
 
 Auth: uses Application Default Credentials, the SDK's standard mechanism - set
 the GOOGLE_APPLICATION_CREDENTIALS environment variable to a service-account

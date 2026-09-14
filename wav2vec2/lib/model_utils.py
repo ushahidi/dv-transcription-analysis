@@ -63,6 +63,12 @@ def load_model(cfg: PipelineConfig, model_name: Optional[str] = None) -> AutoMod
     # fp16/fp32 mismatch crash on CPU).
     model = AutoModelForCTC.from_pretrained(name, dtype=torch_dtype)
     if cfg.model_type == "mms":
+        if not cfg.mms_lang_code:
+            raise ValueError(
+                f"model.type is 'mms' but model.lang_code is not set in this "
+                f"language's config.yaml - MMS needs a target language code "
+                f"(e.g. 'swh' for Swahili) to select the right adapter."
+            )
         model.load_adapter(cfg.mms_lang_code)
     model.to(cfg.device)
     return model

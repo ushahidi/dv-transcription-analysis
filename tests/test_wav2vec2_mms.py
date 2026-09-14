@@ -75,10 +75,20 @@ def test_mms_checkpoint_selects_the_adapter():
 
 def test_mms_type_without_lang_code_raises():
     cfg = _fake_cfg(model_type="mms", mms_lang_code=None)
+    fake_model = MagicMock()
     fake_processor = MagicMock()
-    with patch.object(model_utils.AutoProcessor, "from_pretrained", return_value=fake_processor):
+    with patch.object(model_utils.AutoModelForCTC, "from_pretrained", return_value=fake_model), patch.object(
+        model_utils.AutoProcessor, "from_pretrained", return_value=fake_processor
+    ):
         try:
             model_utils.load_processor(cfg)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("expected ValueError when model.type is 'mms' but lang_code is unset")
+
+        try:
+            model_utils.load_model(cfg)
         except ValueError:
             pass
         else:
