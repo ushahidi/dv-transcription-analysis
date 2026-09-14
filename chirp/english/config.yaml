@@ -1,0 +1,7 @@
+# English overrides on top of chirp/lib/default_config.yaml - the
+# baseline/control language. No dataset_id/etc. here - see
+# chirp/kiswahili/config.yaml's comment for why.
+language_name: english
+
+stt:
+  language_codes: [en-US]

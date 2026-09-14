@@ -1,0 +1,16 @@
+# Shared defaults for every language. A language's own config.yaml (e.g.
+# wav2vec2/kiswahili/config.yaml) is merged on top of this and wins on
+# conflicts. Unlike whisper/lib/default_config.yaml, there's no shared
+# model.name default here - a wav2vec2/CTC checkpoint is fine-tuned for one
+# specific language (thinkKenya's for Swahili, say), so it wouldn't make
+# sense as a cross-language default the way "openai/whisper-tiny" does for
+# Whisper. Each language's own config.yaml sets model.name instead.
+
+model:
+  device: auto   # "auto" resolves to cuda if torch.cuda.is_available(), else cpu
+  fp16: false    # CTC forward passes are cheap enough that this hasn't been needed; flip on for a GPU run if it helps
+
+data:
+  # sample_rate is the only field still used here (see wav2vec2/lib/config.py) -
+  # max_samples was download-time-only, and download is data/'s job now.
+  sample_rate: 16000

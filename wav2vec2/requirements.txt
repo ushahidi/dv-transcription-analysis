@@ -1,0 +1,14 @@
+# torch is installed separately (see wav2vec2/README.md), same reasoning as
+# whisper/requirements.txt: the right wheel depends on the machine (CPU-only
+# index URL here, CUDA build on a GPU box later). This folder needs the same
+# torch/transformers stack whisper/ does (unlike gemini/ and chirp/, which
+# deliberately avoid it) - there's no lighter path for a locally-run model.
+# Does NOT include `datasets` - downloading is now centralized in
+# data/scripts/prepare_dataset.py; soundfile/librosa are still needed here to
+# read the already-downloaded .wav files back off disk before inference.
+transformers==5.13.0
+jiwer==4.0.0
+soundfile==0.14.0
+librosa==0.11.0
+pyyaml==6.0.3
+pandas==3.0.3

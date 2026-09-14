@@ -1,0 +1,8 @@
+# Shared across every engine folder - see data/scripts/prepare_dataset.py.
+language_name: english
+language_code: en
+dataset_id: google/fleurs
+dataset_config: en_us
+text_column: transcription
+audio_column: audio
+sample_rate: 16000

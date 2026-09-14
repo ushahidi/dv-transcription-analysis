@@ -1,20 +1,22 @@
 """CLI: pull a small subset of a language's configured dataset (google/fleurs by
-default) and write it to whisper/<language>/data/ as wav files + a manifest CSV.
+default) and write it to data/<language>/ (shared with every other engine
+folder - see data/README.md) as wav files + a manifest CSV.
 
 WHAT THIS SCRIPT DOES, IN PLAIN TERMS:
-This is step 1 of the whole pipeline. Before we can test or train anything, we
-need real example audio clips with correct, known transcripts. This script
-downloads a small batch of those from a public speech dataset on the internet
-(google/fleurs by default) and saves them locally in this project, in a plain
-format anyone can inspect: a folder of .wav sound files, plus a manifest CSV
-(a simple spreadsheet) that lists each file's transcript and other details.
+This is step 1 of fine-tuning specifically: before whisper/scripts/finetune.py
+can train on anything, it needs a `train`/`validation` split downloaded. This
+script is scoped to those two splits ONLY - `test`/`eval` are deliberately not
+options here anymore. Both of those live in data/<language>/ too, but they're
+written exclusively by data/scripts/prepare_dataset.py, so there's only ever
+one writer for any given split (see data/README.md's "Prefer one writer"
+note) - this script and that one never fight over the same file.
 
-Everything downstream (measuring accuracy, fine-tuning) reads from these local
-files - this script is the only one that talks to the internet dataset.
+For a baseline WER comparison against the other engine folders, use:
+    python data/scripts/prepare_dataset.py --language <language> --split eval
 
 Usage:
-    python whisper/scripts/prepare_dataset.py --language english --split test --max-samples 20
-    python whisper/scripts/prepare_dataset.py --language kiswahili --split train
+    python whisper/scripts/prepare_dataset.py --language english --split train --max-samples 80
+    python whisper/scripts/prepare_dataset.py --language kiswahili --split validation
 """
 
 from __future__ import annotations
@@ -45,10 +47,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--split",
-        default="test",
-        choices=["train", "validation", "test"],
-        help="Which portion of the dataset to pull: 'train' (for fine-tuning), "
-        "'validation' (checked during training), or 'test' (final accuracy report).",
+        default="train",
+        choices=["train", "validation"],
+        help="Which fine-tuning split to pull: 'train' or 'validation'. For 'test' or "
+        "'eval' (the baseline WER comparison set), use "
+        "data/scripts/prepare_dataset.py instead - see this file's module docstring.",
     )
     parser.add_argument(
         "--max-samples",

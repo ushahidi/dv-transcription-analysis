@@ -1,0 +1,27 @@
+# Shared defaults for every language. A language's own config.yaml (e.g.
+# chirp/kiswahili/config.yaml) is merged on top of this and wins on conflicts.
+# Mirrors gemini/lib/default_config.yaml's shape - see chirp/README.md: this
+# folder is blocked on GCP project/billing + ADC setup, not on unfinished code.
+
+stt:
+  # "chirp_3" is the literal value the Cloud Speech-to-Text v2 API expects in
+  # RecognitionConfig.model. Swahili is Preview-status on Chirp 3 (see
+  # chirp/README.md) - if it turns out not to be available in your chosen
+  # gcp.location below, fall back to "chirp_2" here, which has broader
+  # regional coverage (this is a one-line config change, no code change).
+  model: chirp_3
+
+gcp:
+  # Chirp models are only available in specific regions, and Chirp 3's Preview
+  # languages narrower still than Chirp 2's. Confirm sw/sw-KE is actually
+  # served out of this location before a real run - check
+  # https://cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
+  # once a GCP project exists. project_id is deliberately NOT set here (it's
+  # account-specific, not something to check into git) - see
+  # chirp/lib/stt_client.py, which reads it from the GOOGLE_CLOUD_PROJECT
+  # environment variable instead.
+  location: us-central1
+
+# No `data:` section (sample_rate/max_samples) - this folder doesn't download
+# anything anymore, see data/lib/config.py's DatasetConfig for where that
+# now lives.

@@ -1,0 +1,20 @@
+# Shared defaults for every language. A language's own config.yaml (e.g.
+# gemini/kiswahili/config.yaml) is merged on top of this and wins on conflicts.
+# Mirrors whisper/lib/default_config.yaml's shape, minus everything that only
+# makes sense for a locally-run/fine-tuned model (model.device/fp16, train:) -
+# there's nothing to fine-tune here, Gemini is called over the network. Also
+# no `data:` section (sample_rate/max_samples) - this folder doesn't download
+# anything anymore, see data/lib/config.py's DatasetConfig for where that
+# now lives.
+
+gemini:
+  # Pinned to a dated model id, NOT the "gemini-flash-latest" alias -
+  # deliberately. "-latest" silently changes what it points to over time,
+  # which breaks reproducibility for a comparison run meant to be cited
+  # later, and in practice it's also been the less reliable of the two: a
+  # real run against "gemini-flash-latest" hit sustained 503 UNAVAILABLE
+  # errors that the same run against this pinned id didn't. Bump this
+  # deliberately when a newer model is worth switching to, rather than
+  # letting it drift silently - check the current model list at
+  # https://ai.google.dev/gemini-api/docs/models first.
+  model: gemini-2.5-flash

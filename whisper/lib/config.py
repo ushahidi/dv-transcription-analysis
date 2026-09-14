@@ -37,6 +37,15 @@ import yaml
 WHISPER_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = WHISPER_ROOT / "lib" / "default_config.yaml"
 
+# The eval/test data (wav files + manifest) now lives in one shared folder
+# at the repo root, not a private whisper/<language>/data/ copy - see
+# data/scripts/prepare_dataset.py for why (four engine folders each keeping
+# their own copy of the same 500+-clip FLEURS set stopped being cheap).
+# whisper/'s own prepare_dataset.py/finetune.py (train/validation, for actual
+# fine-tuning - not something the other engine folders do) still write here
+# too, so there is still only ever one copy on disk.
+SHARED_DATA_ROOT = WHISPER_ROOT.parent / "data"
+
 
 def _deep_merge(base: dict, override: dict) -> dict:
     """Combine two settings dictionaries into one.
@@ -125,10 +134,11 @@ class PipelineConfig:
         self.train: dict = raw["train"]
 
         # --- Folder layout for this language ---
-        # e.g. for English: whisper/english/, whisper/english/data/,
-        # whisper/english/data/wav/, whisper/english/results/, whisper/english/models/
+        # e.g. for English: whisper/english/ (results/, models/ - this
+        # folder's own outputs) but data/english/ (wav files + manifest -
+        # shared with every other engine folder, see SHARED_DATA_ROOT above).
         self.language_dir = language_dir
-        self.data_dir = language_dir / "data"
+        self.data_dir = SHARED_DATA_ROOT / language
         self.wav_dir = self.data_dir / "wav"
         self.results_dir = language_dir / "results"
         self.models_dir = language_dir / "models"

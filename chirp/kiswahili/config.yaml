@@ -1,0 +1,11 @@
+# Kiswahili overrides on top of chirp/lib/default_config.yaml.
+#
+# No dataset_id/dataset_config/etc. here - this folder doesn't download
+# anything itself anymore (see data/kiswahili/config.yaml, which owns that).
+language_name: swahili
+
+stt:
+  # BCP-47 code(s) Cloud STT expects. "sw-KE" is what Google's docs list
+  # Chirp 3 Swahili support under - confirm this is still current before a
+  # real run.
+  language_codes: [sw-KE]

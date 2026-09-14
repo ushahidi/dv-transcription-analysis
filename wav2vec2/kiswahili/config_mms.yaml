@@ -1,0 +1,27 @@
+# Alternate Kiswahili config for Meta's MMS (Massively Multilingual Speech)
+# instead of thinkKenya's single-language checkpoint - load via:
+#   python wav2vec2/scripts/run_baseline.py --language kiswahili --config wav2vec2/kiswahili/config_mms.yaml
+#
+# LICENSE WARNING: facebook/mms-1b-all is released under CC-BY-NC 4.0 -
+# non-commercial use only. It's wired up here purely as a benchmark/research
+# data point (same role whisper-large-v3 plays as a reference baseline) -
+# it is NOT cleared for use in Ushahidi's actual production transcription
+# pipeline as-is. See wav2vec2/README.md for the full note.
+#
+# No dataset_id/dataset_config/etc. here - this folder doesn't download
+# anything itself anymore (see data/kiswahili/config.yaml, which owns that).
+language_name: swahili
+
+model:
+  name: facebook/mms-1b-all
+  # "mms" switches on the adapter-loading path in wav2vec2/lib/model_utils.py
+  # (load_model/load_processor) - a plain model.type: ctc checkpoint has no
+  # adapter step. wav2vec2/scripts/run_baseline.py checks --model against
+  # this field and fails closed if they're set up inconsistently (e.g.
+  # --model facebook/mms-1b-all without this config file).
+  type: mms
+  # MMS's own ISO 639-3-ish target-language code for Swahili (deliberately
+  # not called language_code - that field doesn't exist in this folder's
+  # config anymore, see the comment above) - confirm this is still current
+  # against facebook/mms-1b-all's supported-languages list before a real run.
+  lang_code: swh

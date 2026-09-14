@@ -1,0 +1,8 @@
+# Kiswahili overrides on top of gemini/lib/default_config.yaml.
+#
+# No dataset_id/dataset_config/etc. here - this folder doesn't download
+# anything itself anymore (see data/kiswahili/config.yaml, which owns that),
+# so those fields would just be unused duplicates. language_name is the only
+# identity field this folder actually reads (used in the transcription
+# prompt and the results JSON's "language" field).
+language_name: swahili

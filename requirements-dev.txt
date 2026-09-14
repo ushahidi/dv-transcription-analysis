@@ -1,0 +1,5 @@
+# Test-only dependencies - not needed to run any engine, just to run the
+# suite under tests/. Install alongside whichever engine(s)' own
+# requirements.txt you're testing (some tests import gemini/chirp/wav2vec2/
+# data modules directly, so those need to be importable too).
+pytest==8.3.4

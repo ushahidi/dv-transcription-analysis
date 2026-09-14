@@ -1,0 +1,12 @@
+# What data/scripts/prepare_dataset.py needs to download and decode audio.
+# Install this BEFORE running prepare_dataset.py, regardless of which engine
+# folder(s) you're about to evaluate - gemini/requirements.txt and
+# chirp/requirements.txt deliberately do NOT include these (they only need
+# them at download time, not at eval time - see data/README.md), so
+# following only an engine folder's own README will leave you missing
+# `datasets`/`soundfile`/`librosa` when you get to the prepare_dataset.py step.
+datasets==5.0.0
+soundfile==0.14.0
+librosa==0.11.0
+pandas==3.0.3
+pyyaml==6.0.3

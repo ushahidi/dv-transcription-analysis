@@ -1,0 +1,13 @@
+# Kiswahili overrides on top of wav2vec2/lib/default_config.yaml.
+#
+# No dataset_id/dataset_config/etc. here - this folder doesn't download
+# anything itself anymore (see data/kiswahili/config.yaml, which owns that).
+language_name: swahili
+
+model:
+  # https://huggingface.co/thinkKenya/wav2vec2-large-xls-r-300m-sw - Wav2Vec2ForCTC,
+  # Apache 2.0, fine-tuned on Common Voice 11.0 Swahili (not FLEURS). Its own
+  # model card reports ~26% WER on its Common Voice eval split - that number
+  # is NOT directly comparable to this repo's FLEURS-based WER (different
+  # test set), it's just context for what to expect before running our own.
+  name: thinkKenya/wav2vec2-large-xls-r-300m-sw

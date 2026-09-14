@@ -59,7 +59,16 @@ def compute_wer(references: Sequence[str], hypotheses: Sequence[str]) -> float:
     # any such pairs rather than letting the whole calculation crash.
     pairs = [(r, h) for r, h in zip(norm_refs, norm_hyps) if r.strip()]
     if not pairs:
-        return 0.0
+        # NOT 0.0: an empty pair list means there was nothing to score, not a
+        # perfect score. Returning 0.0 here would look identical to "the
+        # model transcribed everything correctly" - silently misleading in
+        # exactly the cases (e.g. a --limit run against one punctuation-only
+        # reference) where the WER means nothing at all.
+        raise ValueError(
+            "compute_wer: every reference normalized to empty text (e.g. "
+            "punctuation-only) - there is nothing to score, so no WER can be "
+            "computed for this batch."
+        )
     refs, hyps = zip(*pairs)
     return jiwer.wer(list(refs), list(hyps))
 
